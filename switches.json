@@ -2,7 +2,7 @@
     "switches": [
         {
             "nick": "RF Switch", 
-            "state": 1, 
+            "state": 0, 
             "type": "RF", 
             "id": "5692899141", 
             "order": 1

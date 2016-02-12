@@ -7,6 +7,7 @@
 	<head>
 		<title>ElectroPi Automation</title>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
 		<link href='https://fonts.googleapis.com/css?family=Oswald:400,300' rel='stylesheet' type='text/css'>
 		<link rel="stylesheet" type="text/css" href="style.css">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,7 @@
 		<div id="push"></div>
 		<div id="container" style="max-width:<?php echo $conf['maxWidth'];?>px;">
 			<div id="header">
-				<div id="logo">
+				<div id="logo" class="noSelect">
 					<a href="index.php"><span id="logoColor" class="offText">ELECTRO</span>PI</a>
 				</div>
 				<div id="settings">
@@ -26,7 +27,7 @@
 			<div id="nullView">
 			</div>
 			<div id="homeView" class="view">
-				<div id="switchList">
+				<div id="switchList" class="noSelect">
 					<div id="switchLoad">
 						FETCHING SWITCHES...
 					</div>
@@ -62,6 +63,7 @@
 				console.log(evt.data);
 				var items = evt.data.split(" | ");
 				if(items[0] == "SWITCH_LIST"){
+					window["switchesLast"] = window["switches"];
 					$("#switchLoad").fadeOut("fast",function(){
 						$(".switchLine").remove();
 						var j = JSON.parse(items[1]);
@@ -74,9 +76,25 @@
 								var nickS = window["switches"][s]["nick"];
 								var typeS = window["switches"][s]["type"];
 								var stateS = window["switches"][s]["state"];
+								try{
+									var stateSlast = window["switchesLast"][s]["state"];
+								}
+								catch(err){
+									var stateSlast = stateS;
+								}
 								var order = window["switches"][s]["order"];
 								if(order == orderIndex){
 									addSwitch(idS,nickS,typeS,stateS);
+									if(stateS!=stateSlast){
+										if(stateS == 0){
+											$("#"+idS).css('background-color','#ff5c93');
+											$("#"+idS).animate({backgroundColor:'#242424'}, 600);
+										}
+										else if(stateS == 1){
+											$("#"+idS).css('background-color','#00ffbe');
+											$("#"+idS).animate({backgroundColor:'#242424'}, 600);
+										}
+									}
 									orderIndex+=1;
 								}
 							}
@@ -101,7 +119,7 @@
 			$("#container").fadeIn("fast");
 			switchView("home");
 			setTimeout(function(){
-				$('#logoColor').removeClass('offText').addClass('onText');
+				$('#logoColor').animate({color:'#00ffbe'}, 400);
 			}, 700);
 		}
 
@@ -166,14 +184,26 @@
 		}
 
 		function toggleSwitch(id){
+			ws.send("TOGGLE_SWITCH | "+id);
 			for(s in window["switches"]){
                                 var idS = window["switches"][s]["id"];
 				if(idS == id){
 					var stateS = window["switches"][s]["state"];
+					if(stateS == 0){
+						stateS = 1;
+						$("#"+id+"_state").addClass("onBlock");
+						$("#"+id).css('background-color','#00ffbe');
+						$("#"+id).animate({backgroundColor:'#242424'}, 600);
+					}
+					else if(stateS == 1){
+						stateS = 0;
+						$("#"+id+"_state").addClass("offBlock");
+						$("#"+id).css('background-color','#ff5c93');
+						$("#"+id).animate({backgroundColor:'#242424'}, 600);
+					}
+//					window["switches"][s]["state"] = stateS;
 				}
 			}
-
-			ws.send("TOGGLE_SWITCH | "+id);
 		}
 
 		function checkWindow(){

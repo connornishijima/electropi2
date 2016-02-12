@@ -1,4 +1,7 @@
 from tornado import websocket, web, ioloop
+import traceback
+import threading
+from threading import Thread
 import json
 import os
 import commands
@@ -83,6 +86,32 @@ app = web.Application([
     (r'/ws', SocketHandler),
 ])
 
-if __name__ == '__main__':
+def tornadoLoop():
     app.listen(8888)
     ioloop.IOLoop.instance().start()
+
+def mainLoop():
+
+	switches = {}
+	switchesLast = {}
+	switchesFirstRun = True
+
+	while True:
+		try:
+			with open("switches.json","r") as f:
+				switches = json.loads(f.read())
+			if switches != switchesLast:
+				switchesLast = switches
+				if switchesFirstRun == False:
+					print "SWITCHES UPDATED REMOTELY! Telling clients..."
+					for con in connections:
+                        			con.write_message("SWITCH_LIST | "+json.dumps(switches))
+				switchesFirstRun = False
+		except:
+			print "FUCK:"
+			traceback.print_exc()
+	print "GO"
+
+if __name__ == '__main__':
+	Thread(target = tornadoLoop).start()
+	Thread(target = mainLoop).start()
