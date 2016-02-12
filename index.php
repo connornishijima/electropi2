@@ -1,8 +1,3 @@
-<?php
-	// Parse without sections
-	$conf = parse_ini_file("configuration.ini");
-?>
-
 <html>
 	<head>
 		<title>ElectroPi Automation</title>
@@ -14,7 +9,7 @@
 	</head>
 	<body onload="start();">
 		<div id="push"></div>
-		<div id="container" style="max-width:<?php echo $conf['maxWidth'];?>px;">
+		<div id="container" style="max-width:6400px;">
 			<div id="header">
 				<div id="logo" class="noSelect">
 					<a href="index.php"><span id="logoColor" class="offText">ELECTRO</span>PI</a>
@@ -28,9 +23,6 @@
 			</div>
 			<div id="homeView" class="view">
 				<div id="switchList" class="noSelect">
-					<div id="switchLoad">
-						FETCHING SWITCHES...
-					</div>
 				</div>
 			</div>
 			<div id="settingsView" class="view">
@@ -41,12 +33,15 @@
 	<script>
 		window["errors"] = [];
 		window["currentView"] = "null";
-		window["maxWidth"] = <?php echo $conf['maxWidth'];?>;
+		window["configLoaded"] = false;
+
+		window["conf"] = {};
 
 		var ws;
 
 		window["errorDict"] = {
 			100:"WS CONNECTION CLOSED!",
+			101:"Go fuck yourself",
 		};
 
 		$( window ).resize(function() {
@@ -56,50 +51,57 @@
 		function WSsetup(){
 			ws = new WebSocket('ws://10.0.0.88:8888/ws');
 			ws.onopen = function(){
-				ws.send("GET_SWITCHES");
+				ws.send("GET_SESSION");
 				killError(100);
 			};
 			ws.onmessage = function(evt){
 				console.log(evt.data);
 				var items = evt.data.split(" | ");
+				if(items[0] == "CONFIG"){
+					if(window.configLoaded == false){
+						window.configLoaded = true;
+						$("#container").fadeIn("fast");
+					}
+					window.conf = JSON.parse(items[1]);
+					$("#container").css("max-width",window.conf.maxWidth);
+					checkWindow();
+				}
 				if(items[0] == "SWITCH_LIST"){
 					window["switchesLast"] = window["switches"];
-					$("#switchLoad").fadeOut("fast",function(){
-						$(".switchLine").remove();
-						var j = JSON.parse(items[1]);
-						window["switches"] = j["switches"];
-						var orderIndex = 0;
-						var switchCount = window["switches"].length;
-						while(orderIndex != switchCount){
-							for(s in window["switches"]){
-								var idS = window["switches"][s]["id"];
-								var nickS = window["switches"][s]["nick"];
-								var typeS = window["switches"][s]["type"];
-								var stateS = window["switches"][s]["state"];
-								try{
-									var stateSlast = window["switchesLast"][s]["state"];
-								}
-								catch(err){
-									var stateSlast = stateS;
-								}
-								var order = window["switches"][s]["order"];
-								if(order == orderIndex){
-									addSwitch(idS,nickS,typeS,stateS);
-									if(stateS!=stateSlast){
-										if(stateS == 0){
-											$("#"+idS).css('background-color','#ff5c93');
-											$("#"+idS).animate({backgroundColor:'#242424'}, 600);
-										}
-										else if(stateS == 1){
-											$("#"+idS).css('background-color','#00ffbe');
-											$("#"+idS).animate({backgroundColor:'#242424'}, 600);
-										}
+					$(".switchLine").remove();
+					var j = JSON.parse(items[1]);
+					window["switches"] = j["switches"];
+					var orderIndex = 0;
+					var switchCount = window["switches"].length;
+					while(orderIndex != switchCount){
+						for(s in window["switches"]){
+							var idS = window["switches"][s]["id"];
+							var nickS = window["switches"][s]["nick"];
+							var typeS = window["switches"][s]["type"];
+							var stateS = window["switches"][s]["state"];
+							try{
+								var stateSlast = window["switchesLast"][s]["state"];
+							}
+							catch(err){
+								var stateSlast = stateS;
+							}
+							var order = window["switches"][s]["order"];
+							if(order == orderIndex){
+								addSwitch(idS,nickS,typeS,stateS);
+								if(stateS!=stateSlast){
+									if(stateS == 0){
+										$("#"+idS).css('background-color','#ff5c93');
+										$("#"+idS).animate({backgroundColor:'#242424'}, 600);
 									}
-									orderIndex+=1;
+									else if(stateS == 1){
+										$("#"+idS).css('background-color','#00ffbe');
+										$("#"+idS).animate({backgroundColor:'#242424'}, 600);
+									}
 								}
+								orderIndex+=1;
 							}
 						}
-					});
+					}
 				}
 			};
 			ws.onclose = function(evt){
@@ -114,9 +116,7 @@
 
 		function start(){
 			WSsetup();
-			checkWindow();
 			setInterval(checkErrors,200);
-			$("#container").fadeIn("fast");
 			switchView("home");
 			setTimeout(function(){
 				$('#logoColor').animate({color:'#00ffbe'}, 400);
@@ -184,6 +184,7 @@
 		}
 
 		function toggleSwitch(id){
+			navigator.vibrate(10);
 			ws.send("TOGGLE_SWITCH | "+id);
 			for(s in window["switches"]){
                                 var idS = window["switches"][s]["id"];
@@ -208,14 +209,14 @@
 
 		function checkWindow(){
 			width = $( window ).width();
-			if(width > window["maxWidth"]){
-				var pushHeight = (width-window["maxWidth"])/4;
+			if(width > window.conf.maxWidth){
+				var pushHeight = (width-window.conf.maxWidth)/4;
 				if(pushHeight >= 30){
 					pushHeight = 30;
 					var headerMargin = 0;
 				}
 				else{
-					var headerMargin = 20-(pushHeight);
+					var headerMargin = (20-(pushHeight))/2;
 				}
 				$("#push").height(pushHeight);
 				$("#header").css("padding-left",headerMargin).css("padding-right",headerMargin);

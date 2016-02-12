@@ -2,14 +2,14 @@
     "switches": [
         {
             "nick": "RF Switch", 
-            "state": 0, 
+            "state": 1, 
             "type": "RF", 
             "id": "5692899141", 
             "order": 1
         }, 
         {
             "nick": "Wemo Switch", 
-            "state": 0, 
+            "state": 1, 
             "type": "WEMO", 
             "id": "9238745906", 
             "order": 0

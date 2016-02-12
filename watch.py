@@ -6,11 +6,15 @@ import json
 import os
 import commands
 print "IMPORTS COMPLETE."
+import time
 
 myPID = str(os.getpid())
 print myPID
 
 connections = set()
+
+global lastMessage
+lastMessage = time.time()
 
 print "KILLING ALL PROCESSES ON PORT 8888..."
 os.system("fuser -k 8888/tcp")
@@ -50,13 +54,18 @@ class SocketHandler(websocket.WebSocketHandler):
             connections.add(self)
 
     def on_message(self, message):
+	global lastMessage
+	lastMessage = time.time()
 	print message
 	message = message.split(" | ")
-	if message[0] == "GET_SWITCHES":
-		print "Sending switches to client..."
+	if message[0] == "GET_SESSION":
+		print "Sending switches and config to client..."
 		with open("switches.json","r") as f:
 			data = f.read();
 		self.write_message("SWITCH_LIST | "+data)
+		with open("config.json","r") as f:
+			data = f.read();
+		self.write_message("CONFIG | "+data)
 
 	if message[0] == "TOGGLE_SWITCH":
 		id = message[1]
@@ -91,21 +100,23 @@ def tornadoLoop():
     ioloop.IOLoop.instance().start()
 
 def mainLoop():
-
+	global lastMessage
 	switches = {}
 	switchesLast = {}
 	switchesFirstRun = True
 
 	while True:
 		try:
+			time.sleep(0.1)
 			with open("switches.json","r") as f:
 				switches = json.loads(f.read())
 			if switches != switchesLast:
 				switchesLast = switches
-				if switchesFirstRun == False:
-					print "SWITCHES UPDATED REMOTELY! Telling clients..."
-					for con in connections:
-                        			con.write_message("SWITCH_LIST | "+json.dumps(switches))
+				if time.time()-lastMessage > 2:
+					if switchesFirstRun == False:
+						print "SWITCHES UPDATED REMOTELY! Telling clients..."
+						for con in connections:
+	                        			con.write_message("SWITCH_LIST | "+json.dumps(switches))
 				switchesFirstRun = False
 		except:
 			print "FUCK:"

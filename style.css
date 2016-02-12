@@ -105,6 +105,7 @@ a{
 }
 #errorBox{
 	display:none;
+	text-transform: uppercase;
 	border: 1px solid #FF6666;
 	background-color: rgba(255, 102, 102, 0.25);
 	padding: 10px;
